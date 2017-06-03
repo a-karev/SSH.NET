@@ -67,9 +67,9 @@ namespace Renci.SshNet
                 return false;
             }
 
-            foreach (var authenticationMethod in GetOrderedAuthenticationMethods(authenticationState, matchingAuthenticationMethods))
+            foreach (var authenticationMethod in matchingAuthenticationMethods)
             {
-                if (authenticationState.FailedAuthenticationMethods.Contains(authenticationMethod))
+                if (authenticationState.FailedAuthenticationMethods.Contains(authenticationMethod) || authenticationState.ExecutedAuthenticationMethods.Contains(authenticationMethod))
                     continue;
 
                 // when the authentication method was previously executed, then skip the authentication
@@ -77,11 +77,8 @@ namespace Renci.SshNet
                 // a stack overflow for servers that do not update the list of allowed authentication
                 // methods after a partial success
 
-                if (!authenticationState.ExecutedAuthenticationMethods.Contains(authenticationMethod))
-                {
-                    // update state to reflect previosuly executed authentication methods
-                    authenticationState.ExecutedAuthenticationMethods.Add(authenticationMethod);
-                }
+                // update state to reflect previosuly executed authentication methods
+                authenticationState.ExecutedAuthenticationMethods.Add(authenticationMethod);
 
                 var authenticationResult = authenticationMethod.Authenticate(session);
                 switch (authenticationResult)
@@ -106,27 +103,6 @@ namespace Renci.SshNet
             }
 
             return false;
-        }
-
-        private static IEnumerable<IAuthenticationMethod> GetOrderedAuthenticationMethods(AuthenticationState authenticationState, IAuthenticationMethod[] matchingAuthenticationMethods)
-        {
-            var skippedAuthenticationMethods = new List<IAuthenticationMethod>();
-
-            for (var i = 0; i < matchingAuthenticationMethods.Length; i++)
-            {
-                var authenticationMethod = matchingAuthenticationMethods[i];
-
-                if (authenticationState.ExecutedAuthenticationMethods.Contains(authenticationMethod))
-                {
-                    skippedAuthenticationMethods.Add(authenticationMethod);
-                    continue;
-                }
-
-                yield return authenticationMethod;
-            }
-
-            foreach (var authenticationMethod in skippedAuthenticationMethods)
-                yield return authenticationMethod;
         }
 
         private class AuthenticationState
